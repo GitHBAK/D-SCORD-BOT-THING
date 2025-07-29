@@ -7,12 +7,19 @@ import os
 
 intents = discord.Intents.default()
 intents.message_content = True
+intents.members = True
 
 bot = commands.Bot(command_prefix="!", intents=intents)
 
 @bot.event
 async def on_ready():
     print(f"{bot.user} olarak giriş yaptık.")
+
+@bot.event
+async def on_member_join(member):
+    kanal = discord.utils.get(member.guild.text_channels, name='general')
+    if kanal:
+        await kanal.send(f"👋 Hoş geldin, {member.mention}! Sunucumuza katıldığın için mutluyuz!")
 
 @bot.command()
 async def ordek(ctx):
