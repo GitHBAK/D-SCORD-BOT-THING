@@ -1,35 +1,100 @@
 import discord
+from discord.ext import commands
+import requests
 import random
-from bot_mantik import gen_pass
+import string
+import os
 
 intents = discord.Intents.default()
 intents.message_content = True
-client = discord.Client(intents=intents)
 
-@client.event
+bot = commands.Bot(command_prefix="!", intents=intents)
+
+@bot.event
 async def on_ready():
-    print(f'{client.user} olarak giriş yaptık.')
+    print(f"{bot.user} olarak giriş yaptık.")
 
-@client.event
-async def on_message(message):
-    if message.author == client.user:
-        return
+@bot.command()
+async def ordek(ctx):
+    try:
+        res = requests.get("https://random-d.uk/api/random")
+        data = res.json()
+        await ctx.send(data['url'])
+    except Exception as e:
+        await ctx.send(f"Hata oluştu: {e}")
 
-    if message.content.startswith('!sifre'):
-        await message.channel.send(gen_pass(10))
-    
-    elif message.content.startswith('!bye'):
-        await message.channel.send("\U0001f642")
-    
-    elif message.content.startswith('!yazitura'):
-        sonuc = random.choice(['Yazı', 'Tura'])
-        await message.channel.send(sonuc)
+@bot.command()
+async def mem(ctx):
+    try:
+        klasor = 'images'
+        if not os.path.exists(klasor):
+            await ctx.send("❌ `images` klasörü bulunamadı.")
+            return
 
-    elif message.content.startswith('!emoji'):
-        emojiler = ['😀', '😎', '😂', '😈', '👻', '🤖', '🐍', '🍀', '🔥', '⭐']
-        await message.channel.send(random.choice(emojiler))
-    
-    else:
-        await message.channel.send(message.content)
+        rarity_pool = []
 
-client.run("TOKENIN_BURAYA")
+        mem_rarity = {
+            "mem1.png": "common",
+            "mem2.png": "common",
+            "mem3.png": "rare",
+            "mem4.png": "legendary"
+        }
+
+        rarity_weights = {
+            "common": 8,
+            "rare": 2,      
+            "legendary": 0.5
+        }
+
+        for filename, rarity in mem_rarity.items():
+            if os.path.exists(os.path.join(klasor, filename)):
+                weight = rarity_weights.get(rarity, 1)
+                rarity_pool.extend([filename] * int(weight * 10))  # Ağırlığı büyüt
+
+        if not rarity_pool:
+            await ctx.send("Klasörde geçerli mem bulunamadı.")
+            return
+
+        secilen = random.choice(rarity_pool)
+        with open(os.path.join(klasor, secilen), 'rb') as f:
+            await ctx.send(file=discord.File(f, filename=secilen))
+
+    except Exception as e:
+        await ctx.send(f"Hata oluştu: {e}")
+
+
+@bot.command()
+async def sifre(ctx, uzunluk: int = 12):
+    karakterler = string.ascii_letters + string.digits + string.punctuation
+    sifre = ''.join(random.choice(karakterler) for _ in range(uzunluk))
+    await ctx.send(f"Rastgele Şifre: `{sifre}`")
+
+@bot.command()
+async def emoji(ctx):
+    emojiler = ['😀', '😎', '😂', '😈', '👻', '🤖', '🐍', '🍀', '🔥', '⭐']
+    await ctx.send(random.choice(emojiler))
+
+@bot.command()
+async def yardim(ctx):
+    mesaj = (
+        "**Mevcut Komutlar:**\n"
+        "`!ordek` – Rastgele ördek resmi gönderir 🦆\n"
+        "`!meme` – Rastgele meme paylaşır 😂\n"
+        "`!sifre [uzunluk]` – Rastgele şifre oluşturur 🔐 (Varsayılan: 12)\n"
+        "`!emoji` – Rastgele emoji gönderir 😎\n"
+        "`!yazitura` – Yazı mı tura mı atar 🎲\n"
+        "`!bye` – Bot gülümseyen emoji gönderir 🙂\n"
+        "`!yardim` – Bu mesajı gösterir 📝"
+    )
+    await ctx.send(mesaj)
+
+@bot.command()
+async def yazitura(ctx):
+    sonuc = random.choice(['Yazı', 'Tura'])
+    await ctx.send(sonuc)
+
+@bot.command()
+async def bye(ctx):
+    await ctx.send("\U0001f642")
+
+bot.run("bot_token")
